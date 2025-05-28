@@ -906,34 +906,60 @@
         </div>
     </div>
 
-    <script>
+<script>
         let currentSection = 'basics';
         let testScore = 0;
         let testQuestions = 3;
         let answeredQuestions = new Set();
+        let audioContext = null;
+        let audioAllowed = false;
+
+        // Ініціалізація аудіо контексту після першої взаємодії
+        function initAudio() {
+            if (!audioAllowed) {
+                console.log('Ініціалізуємо аудіо після взаємодії користувача');
+                audioAllowed = true;
+                
+                // Створюємо тихий звук для "розблокування" аудіо
+                const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
+                silentAudio.play().catch(() => {});
+            }
+        }
 
         // Функція для відтворення аудіо
         function playAudio(isCorrect) {
+            if (!audioAllowed) {
+                console.log('Аудіо ще не дозволене браузером');
+                return;
+            }
+
             let audioFile;
             if (isCorrect) {
-                // Випадково обираємо один з двох звуків для правильної відповіді
                 const correctSounds = ['correct_1.ogg', 'correct_2.ogg'];
                 audioFile = correctSounds[Math.floor(Math.random() * correctSounds.length)];
             } else {
-                // Випадково обираємо один з двох звуків для неправильної відповіді
                 const incorrectSounds = ['incorrect_1.ogg', 'incorrect_2.ogg'];
                 audioFile = incorrectSounds[Math.floor(Math.random() * incorrectSounds.length)];
             }
             
-            // Створюємо та відтворюємо аудіо
+            console.log(`Відтворюємо: audio/${audioFile}`);
+            
             const audio = new Audio(`audio/${audioFile}`);
-            audio.volume = 0.5; // Встановлюємо гучність 50%
-            audio.play().catch(error => {
-                console.log('Помилка відтворення аудіо:', error);
-            });
+            audio.volume = 0.6;
+            
+            audio.play()
+                .then(() => {
+                    console.log('Аудіо відтворюється успішно');
+                })
+                .catch(error => {
+                    console.error('Помилка відтворення:', error);
+                });
         }
 
         function showSection(sectionId) {
+            // Ініціалізуємо аудіо при першому кліку
+            initAudio();
+            
             // Приховати всі секції
             const sections = document.querySelectorAll('.section');
             sections.forEach(section => {
@@ -963,14 +989,17 @@
         }
 
         function checkAnswer(element, isCorrect) {
+            // Ініціалізуємо аудіо при першому кліку на відповідь
+            initAudio();
+            
             // Очистити попередні відповіді
             const options = element.parentNode.querySelectorAll('.quiz-option');
             options.forEach(option => {
                 option.classList.remove('correct', 'incorrect');
             });
 
-            // Відтворити аудіо
-            playAudio(isCorrect);
+            // Відтворити аудіо з невеликою затримкою
+            setTimeout(() => playAudio(isCorrect), 100);
 
             // Позначити правильну/неправильну відповідь
             if (isCorrect) {
@@ -987,6 +1016,9 @@
         }
 
         function showExplanation(button) {
+            // Ініціалізуємо аудіо при кліку
+            initAudio();
+            
             const explanation = button.nextElementSibling;
             if (explanation.style.display === 'none' || !explanation.style.display) {
                 explanation.style.display = 'block';
@@ -998,18 +1030,21 @@
         }
 
         function checkTestAnswer(element, isCorrect, questionNumber) {
+            // Ініціалізуємо аудіо
+            initAudio();
+            
             if (answeredQuestions.has(questionNumber)) {
-                return; // Вже відповіли на це питання
+                return;
             }
 
             const options = element.parentNode.querySelectorAll('.quiz-option');
             options.forEach(option => {
                 option.classList.remove('correct', 'incorrect');
-                option.onclick = null; // Відключити можливість повторного натискання
+                option.onclick = null;
             });
 
-            // Відтворити аудіо
-            playAudio(isCorrect);
+            // Відтворити аудіо з невеликою затримкою
+            setTimeout(() => playAudio(isCorrect), 100);
 
             if (isCorrect) {
                 element.classList.add('correct');
@@ -1025,13 +1060,14 @@
 
             answeredQuestions.add(questionNumber);
 
-            // Перевірити чи всі питання відповіджені
             if (answeredQuestions.size === testQuestions) {
-                showTestResults();
+                setTimeout(() => showTestResults(), 500);
             }
         }
 
         function showTestExplanation(button, questionNumber) {
+            initAudio();
+            
             const explanation = button.nextElementSibling;
             if (explanation.style.display === 'none' || !explanation.style.display) {
                 explanation.style.display = 'block';
@@ -1054,8 +1090,8 @@
             if (percentage >= 80) {
                 feedback.innerHTML = '🌟 Відмінно! Ви готові до НМТ!';
                 feedback.style.color = '#27ae60';
-                // Відтворити звук успіху
-                playAudio(true);
+                // Відтворити звук успіху з затримкою
+                setTimeout(() => playAudio(true), 300);
             } else if (percentage >= 60) {
                 feedback.innerHTML = '👍 Добре! Потрібно ще трохи попрактикуватися.';
                 feedback.style.color = '#f39c12';
@@ -1067,8 +1103,14 @@
             resultsDiv.style.display = 'block';
         }
 
-        // Ініціалізація
-        updateProgress();
+        // Додаємо слухачі подій для ініціалізації аудіо
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ініціалізуємо аудіо при будь-якому кліку на сторінці
+            document.addEventListener('click', initAudio, { once: true });
+            document.addEventListener('touchstart', initAudio, { once: true });
+            
+            updateProgress();
+        });
 
         // Анімація з'явлення карток
         const observer = new IntersectionObserver((entries) => {
